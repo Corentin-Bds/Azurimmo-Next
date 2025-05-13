@@ -41,4 +41,6 @@ export default function AddBatimentComponent({...props}:{
             </Form>
         </>
     );
+
+
 }

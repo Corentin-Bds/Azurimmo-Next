@@ -1,4 +1,3 @@
-import Link from "next/link";
 import HttpService from "@/services/HttpService";
 import API_URL from "@/constants/ApiUrl";
 import BatimentComponent from "@/components/BatimentComponent";
