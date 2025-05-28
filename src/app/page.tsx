@@ -6,6 +6,8 @@ export default function Home() {
         <ul>
             <li>
                 <Link href={"/batiments"}>Bâtiments</Link>
+                <br/>
+                <Link href={'/locataire'}>Locataires</Link>
             </li>
         </ul>
     </>
