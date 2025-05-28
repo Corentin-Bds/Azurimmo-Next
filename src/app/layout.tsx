@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import {Layout} from "antd";
 import {Content, Footer, Header} from "antd/lib/layout/layout";
+import "antd/dist/reset.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

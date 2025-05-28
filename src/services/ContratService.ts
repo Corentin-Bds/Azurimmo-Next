@@ -10,7 +10,20 @@ const ContratService = {
         } catch (e){
             return null;
         }
-    }
+    },
+
+    deleteByLocataireId: (locataireId: number) =>
+        HttpService.delete(API_URL.contrats + "locataire/" + locataireId),
+
+    getAll: async (): Promise<Contrat[]> => {
+        try {
+            const response = await HttpService.get(API_URL.contrats);
+            return response.data;
+        } catch (error) {
+            console.error("Erreur lors de la récupération des contrats :", error);
+            return [];
+        }
+    },
 };
 
 export default ContratService;

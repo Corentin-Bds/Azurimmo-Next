@@ -21,8 +21,13 @@ export  default class HttpService{
         return await response.json();
     }
 
-    static async delete(url:string){
-        const response=await fetch(url,{method:'DELETE'});
-        return await response.json();
+    static async delete(url: string) {
+        const response = await fetch(url, { method: "DELETE" });
+
+        if (!response.ok) {
+            throw new Error("Erreur suppression (code " + response.status + ")");
+        }
+
+        return true;
     }
 }
