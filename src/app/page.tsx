@@ -8,6 +8,8 @@ export default function Home() {
                 <Link href={"/batiments"}>Bâtiments</Link>
                 <br/>
                 <Link href={'/locataire'}>Locataires</Link>
+                <br/>
+                <Link href={'/contrats'}>Contrats</Link>
             </li>
         </ul>
     </>

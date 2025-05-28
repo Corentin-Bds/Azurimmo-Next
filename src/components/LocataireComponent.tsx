@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Button, Table, message } from "antd";
+import AddLocataireComponent from "@/components/AddLocataireComponent";
+import ContratModal from "@/components/ContratModal";
+import LocataireService from "@/services/LocataireService";
+import Link from "next/link";
 import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import Locataire from "@/models/Locataire";
-import LocataireService from "@/services/LocataireService";
-import AddLocataireComponent from "@/components/AddLocataireComponent";
-import Link from "next/link";
+import Contrat from "@/models/Contrat";
 
 export default function LocataireComponent({
                                                locataires: initialLocataires,
@@ -14,41 +16,38 @@ export default function LocataireComponent({
     locataires: Locataire[];
 }) {
     const [locataires, setLocataires] = useState<Locataire[]>(initialLocataires);
-    const [showDialog, setShowDialog] = useState(false);
+    const [showDialog, setShowDialog] = useState<boolean>(false);
     const [locataireToEdit, setLocataireToEdit] = useState<Locataire | null>(null);
+    const [selectedContrat, setSelectedContrat] = useState<Contrat | null>(null);
 
-    const handleSubmit = async (locataire: Locataire) => {
-        try {
-            const isEdit = !!locataire.id;
-            let updated;
+    const updateLocataire = async (locataire: Locataire) => {
+        const isEdit = locataire.id !== undefined && locataire.id !== 0;
+        let response;
 
-            if (isEdit) {
-                updated = await LocataireService.update(locataire.id!, locataire);
-                setLocataires(locataires.map((l) => (l.id === updated.id ? updated : l)));
-                message.success("Locataire modifié.");
-            } else {
-                updated = await LocataireService.create(locataire);
-                setLocataires([...locataires, updated]);
-                message.success("Locataire ajouté.");
-            }
-
-            setShowDialog(false);
-            setLocataireToEdit(null);
-        } catch (err) {
-            console.error(err);
-            message.error("Erreur lors de l'enregistrement.");
+        if (isEdit) {
+            response = await LocataireService.update(locataire.id, locataire);
+            setLocataires(locataires.map((l) => (l.id === response.id ? response : l)));
+        } else {
+            response = await LocataireService.create(locataire);
+            setLocataires([...locataires, response]);
         }
+
+        setShowDialog(false);
+        setLocataireToEdit(null);
     };
 
     const handleDelete = async (id: number) => {
         try {
             await LocataireService.delete(id);
             setLocataires(locataires.filter((l) => l.id !== id));
-            message.success("Locataire supprimé.");
         } catch (error) {
-            console.error("Erreur suppression :", error);
-            message.error("Suppression impossible.");
+            console.error("Suppression échouée :", error);
+            message.error("Ce locataire a un contrat actif. Suppression impossible.");
         }
+    };
+
+    const showContratModal = (contrat: Contrat) => {
+        setSelectedContrat(contrat);
     };
 
     const columns = [
@@ -73,6 +72,18 @@ export default function LocataireComponent({
             key: "telephone",
         },
         {
+            title: "Contrat",
+            key: "contrat",
+            render: (_: any, record: Locataire) =>
+                record.contrat ? (
+                    <Button type="link" onClick={() => showContratModal(record.contrat)}>
+                        Voir
+                    </Button>
+                ) : (
+                    "Aucun"
+                ),
+        },
+        {
             title: "Actions",
             key: "actions",
             render: (_: any, record: Locataire) => (
@@ -86,7 +97,7 @@ export default function LocataireComponent({
                     >
                         <EditOutlined />
                     </Button>
-                    <Button shape="circle" danger onClick={() => handleDelete(record.id!)}>
+                    <Button shape="circle" danger onClick={() => handleDelete(record.id)}>
                         <DeleteOutlined />
                     </Button>
                 </>
@@ -96,23 +107,32 @@ export default function LocataireComponent({
 
     return (
         <>
-            <h2 className="text-2xl font-semibold mb-4">Locataires</h2>
+            <h2>Locataires</h2>
 
             <Button
-                type="primary"
-                className="mb-4"
                 onClick={() => {
                     setLocataireToEdit(null);
                     setShowDialog(true);
                 }}
             >
-                Ajouter un locataire
+                Ajouter...
             </Button>
+
+            <Link href="/">
+                <Button style={{ marginLeft: 10 }}>Retour à l'accueil</Button>
+            </Link>
+
+            <br />
+            <br />
+
+            {!showDialog && (
+                <Table dataSource={locataires} rowKey="id" columns={columns} />
+            )}
 
             {showDialog && (
                 <AddLocataireComponent
                     locataire={
-                        locataireToEdit ?? {
+                        locataireToEdit || {
                             nom: "",
                             prenom: "",
                             email: "",
@@ -123,22 +143,16 @@ export default function LocataireComponent({
                         setShowDialog(false);
                         setLocataireToEdit(null);
                     }}
-                    onSubmit={handleSubmit}
+                    onSubmit={updateLocataire}
                 />
             )}
 
-            <Table
-                dataSource={locataires}
-                rowKey="id"
-                columns={columns}
-                pagination={false}
-            />
-
-            <div className="mt-4">
-                <Link href="/">
-                    <Button>Retour à l’accueil</Button>
-                </Link>
-            </div>
+            {selectedContrat && (
+                <ContratModal
+                    contrat={selectedContrat}
+                    onClose={() => setSelectedContrat(null)}
+                />
+            )}
         </>
     );
 }
