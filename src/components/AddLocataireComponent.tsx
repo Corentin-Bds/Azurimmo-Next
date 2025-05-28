@@ -85,22 +85,6 @@ export default function AddLocataireComponent({ locataire, onClose, onSubmit }: 
                 <Form.Item name="telephone" label="Téléphone">
                     <Input />
                 </Form.Item>
-
-                <Form.Item name="contratId" label="Contrat associé">
-                    {loading ? (
-                        <Spin />
-                    ) : contrats.length > 0 ? (
-                        <Select placeholder="Sélectionner un contrat (optionnel)" allowClear>
-                            {contrats.map((contrat) => (
-                                <Select.Option key={contrat.id} value={contrat.id}>
-                                    Contrat #{contrat.id}
-                                </Select.Option>
-                            ))}
-                        </Select>
-                    ) : (
-                        <Input disabled value="Pas de contrat disponible" />
-                    )}
-                </Form.Item>
             </Form>
         </Modal>
     );
