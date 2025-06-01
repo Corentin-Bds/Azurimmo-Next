@@ -91,7 +91,8 @@ export default function BatimentComponent({ batiments: initialBatiments }: { bat
                     expandable={{
                         expandedRowRender: (record: Batiment) => (
                             <AppartementComponent batimentId={record.id} />
-                        )
+                        ),
+                        rowExpandable: (record) => true,
                     }}
                 />
             )}
