@@ -1,56 +1,39 @@
-"use client";
-
 import { useEffect, useState } from "react";
-import { Button, Table, Tag, message } from "antd";
-import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import { Button, Table, message, Popconfirm } from "antd";
+import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import Appartement from "@/models/Appartement";
-import AppartementService from "@/services/AppartementService";
-import AddAppartementComponent from "@/components/AddAppartementComponent";
-import ContratService from "@/services/ContratService";
-import LocataireService from "@/services/LocataireService";
-import ContratModal from "@/components/ContratModal";
+import HttpService from "@/services/HttpService";
+import API_URL from "@/constants/ApiUrl";
 import Contrat from "@/models/Contrat";
+import ContratService from "@/services/ContratService";
+import ContratModal from "@/components/ContratModal";
+import AddAppartementComponent from "@/components/AddAppartementComponent";
 import Locataire from "@/models/Locataire";
+import LocataireService from "@/services/LocataireService";
 
-export default function AppartementComponent({
-                                                 batimentId
-                                             }: {
-    batimentId: number
-}) {
+export default function NestedAppartementTable({ batimentId }: { batimentId: number }) {
     const [appartements, setAppartements] = useState<Appartement[]>([]);
-    const [showDialog, setShowDialog] = useState(false);
-    const [appartementToEdit, setAppartementToEdit] = useState<Appartement | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [locataires, setLocataires] = useState<Locataire[]>([]);
-    const [contrats, setContrats] = useState<Contrat[]>([]);
-    const [showContratModal, setShowContratModal] = useState(false);
+    const [contrats, setContrats] = useState<{ [key: number]: Contrat | null }>({});
     const [selectedContrat, setSelectedContrat] = useState<Contrat | null>(null);
-    const [appartementsContrats, setAppartementsContrats] = useState<{ [key: number]: Contrat | null }>({});
+    const [showModal, setShowModal] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [locataires, setLocataires] = useState<Locataire[]>([]);
+    const [allContrats, setAllContrats] = useState<Contrat[]>([]);
 
-    // Charger les données initiales
     useEffect(() => {
         fetchAppartements();
         fetchLocataires();
         fetchContrats();
     }, [batimentId]);
 
-    // Charger les contrats pour chaque appartement
-    useEffect(() => {
-        if (appartements.length > 0) {
-            loadContratsForAppartements();
-        }
-    }, [appartements]);
-
     const fetchAppartements = async () => {
-        try {
-            setLoading(true);
-            const data = await AppartementService.getByBatimentId(batimentId);
-            setAppartements(data);
-        } catch (error) {
-            console.error("Erreur lors du chargement des appartements:", error);
-            message.error("Erreur lors du chargement des appartements");
-        } finally {
-            setLoading(false);
+        const result = await fetch(`${API_URL.appartements}batiment/${batimentId}`);
+        const data = await result.json();
+        setAppartements(data);
+
+        for (const appart of data) {
+            const contrat = await ContratService.getContratByAppartement(appart.id);
+            setContrats(prev => ({ ...prev, [appart.id]: contrat }));
         }
     };
 
@@ -66,130 +49,58 @@ export default function AppartementComponent({
     const fetchContrats = async () => {
         try {
             const data = await ContratService.getAll();
-            setContrats(data);
+            setAllContrats(data);
         } catch (error) {
             console.error("Erreur lors du chargement des contrats:", error);
         }
     };
 
-    const loadContratsForAppartements = async () => {
-        const contratsMap: { [key: number]: Contrat | null } = {};
-
-        for (const appartement of appartements) {
-            try {
-                const contrat = await ContratService.getContratByAppartement(appartement.id);
-                contratsMap[appartement.id] = contrat;
-            } catch (error) {
-                contratsMap[appartement.id] = null;
-            }
-        }
-
-        setAppartementsContrats(contratsMap);
-    };
-
-    const handleSubmit = async (appartementData: any) => {
+    const handleDeleteAppartement = async (appartementId: number) => {
         try {
-            const isEdit = !!appartementToEdit?.id;
-            let savedAppartement;
-
-            if (isEdit) {
-                savedAppartement = await AppartementService.update(appartementToEdit!.id, {
-                    ...appartementData,
-                    id: appartementToEdit!.id,
-                    batiment: { id: batimentId }
-                });
-                setAppartements(appartements.map(a =>
-                    a.id === savedAppartement.id ? savedAppartement : a
-                ));
-                message.success("Appartement modifié avec succès");
-            } else {
-                savedAppartement = await AppartementService.create({
-                    ...appartementData,
-                    batiment: { id: batimentId }
-                });
-                setAppartements([...appartements, savedAppartement]);
-                message.success("Appartement ajouté avec succès");
-            }
-
-            setShowDialog(false);
-            setAppartementToEdit(null);
-
-            // Recharger les contrats après modification
-            loadContratsForAppartements();
-        } catch (error) {
-            console.error("Erreur lors de l'enregistrement:", error);
-            message.error("Erreur lors de l'enregistrement de l'appartement");
-        }
-    };
-
-    const handleDelete = async (id: number) => {
-        try {
-            await AppartementService.delete(id);
-            setAppartements(appartements.filter(a => a.id !== id));
+            await HttpService.delete(`${API_URL.appartements}${appartementId}`);
             message.success("Appartement supprimé avec succès");
+            fetchAppartements(); // Recharger la liste
         } catch (error) {
             console.error("Erreur lors de la suppression:", error);
             message.error("Erreur lors de la suppression de l'appartement");
         }
     };
 
-    const showContratDetails = (contrat: Contrat) => {
-        setSelectedContrat(contrat);
-        setShowContratModal(true);
+    const handleAddSuccess = () => {
+        setShowAddModal(false);
+        fetchAppartements(); // Recharger la liste
+        message.success("Appartement ajouté avec succès");
     };
 
     const columns = [
-        {
-            title: "Numéro",
-            dataIndex: "numero",
-            key: "numero",
-            render: (numero: number) => <Tag color="blue">N°{numero}</Tag>
-        },
-        {
-            title: "Surface (m²)",
-            dataIndex: "surface",
-            key: "surface",
-            render: (surface: number) => `${surface} m²`
-        },
-        {
-            title: "Pièces",
-            dataIndex: "nbrPiece",
-            key: "nbrPiece",
-            render: (nbrPiece: number) => `${nbrPiece} pièce${nbrPiece > 1 ? 's' : ''}`
-        },
-        {
-            title: "Description",
-            dataIndex: "description",
-            key: "description",
-            ellipsis: true
-        },
+        { title: "Numéro de l'appartement", dataIndex: "numero", key: "numero" },
+        { title: "Surface en m²", dataIndex: "surface", key: "surface" },
+        { title: "Nombre de Pièces", dataIndex: "nbrPiece", key: "nbrPiece" },
+        { title: "Description de l'appartement", dataIndex: "description", key: "description" },
         {
             title: "Locataire",
             key: "locataire",
             render: (_: any, record: Appartement) => {
-                const contrat = appartementsContrats[record.id];
-                return contrat?.locataire ? (
-                    <span>{contrat.locataire.nom} {contrat.locataire.prenom}</span>
-                ) : (
-                    <Tag color="default">Libre</Tag>
-                );
+                const contrat = contrats[record.id];
+                return contrat?.locataire
+                    ? `${contrat.locataire.nom} ${contrat.locataire.prenom}`
+                    : "Aucun";
             }
         },
         {
             title: "Contrat",
             key: "contrat",
             render: (_: any, record: Appartement) => {
-                const contrat = appartementsContrats[record.id];
+                const contrat = contrats[record.id];
                 return contrat ? (
-                    <Button
-                        size="small"
-                        onClick={() => showContratDetails(contrat)}
-                        icon={<EyeOutlined />}
-                    >
+                    <Button onClick={() => {
+                        setSelectedContrat(contrat);
+                        setShowModal(true);
+                    }}>
                         Voir contrat
                     </Button>
                 ) : (
-                    <Tag color="orange">Aucun contrat</Tag>
+                    "Aucun"
                 );
             }
         },
@@ -197,44 +108,33 @@ export default function AppartementComponent({
             title: "Actions",
             key: "actions",
             render: (_: any, record: Appartement) => (
-                <div className="flex gap-2">
-                    <Button
-                        size="small"
-                        shape="circle"
-                        onClick={() => {
-                            setAppartementToEdit(record);
-                            setShowDialog(true);
-                        }}
-                        icon={<EditOutlined />}
-                    />
-                    <Button
-                        size="small"
-                        shape="circle"
-                        danger
-                        onClick={() => handleDelete(record.id)}
-                        icon={<DeleteOutlined />}
-                    />
+                <div style={{ display: "flex", gap: "8px" }}>
+                    <Popconfirm
+                        title="Supprimer cet appartement"
+                        description="Êtes-vous sûr de vouloir supprimer cet appartement ? Cette action supprimera aussi tous les contrats liés."
+                        onConfirm={() => handleDeleteAppartement(record.id)}
+                        okText="Oui"
+                        cancelText="Non"
+                        okType="danger"
+                    >
+                        <Button
+                            shape="circle"
+                            danger
+                            icon={<DeleteOutlined />}
+                        />
+                    </Popconfirm>
                 </div>
             )
         }
     ];
 
-    if (loading) {
-        return <div>Chargement des appartements...</div>;
-    }
-
     return (
-        <div className="p-4">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">
-                    Appartements ({appartements.length})
-                </h3>
+        <>
+            <div style={{ marginBottom: 16 }}>
                 <Button
                     type="primary"
-                    onClick={() => {
-                        setAppartementToEdit(null);
-                        setShowDialog(true);
-                    }}
+                    icon={<PlusOutlined />}
+                    onClick={() => setShowAddModal(true)}
                 >
                     Ajouter un appartement
                 </Button>
@@ -242,39 +142,29 @@ export default function AppartementComponent({
 
             <Table
                 dataSource={appartements}
-                columns={columns}
                 rowKey="id"
+                columns={columns}
                 pagination={false}
-                size="small"
             />
 
-            {showDialog && (
-                <AddAppartementComponent
-                    batimentId={batimentId}
-                    locataires={locataires}
-                    contrats={contrats}
-                    appartement={appartementToEdit}
-                    onAddSuccess={() => {
-                        setShowDialog(false);
-                        setAppartementToEdit(null);
-                        fetchAppartements();
-                    }}
-                    onCancel={() => {
-                        setShowDialog(false);
-                        setAppartementToEdit(null);
-                    }}
-                    onSubmit={handleSubmit}
-                />
-            )}
-
             <ContratModal
-                visible={showContratModal}
+                visible={showModal}
                 contrat={selectedContrat}
                 onClose={() => {
-                    setShowContratModal(false);
+                    setShowModal(false);
                     setSelectedContrat(null);
                 }}
             />
-        </div>
+
+            {showAddModal && (
+                <AddAppartementComponent
+                    batimentId={batimentId}
+                    locataires={locataires}
+                    contrats={allContrats}
+                    onAddSuccess={handleAddSuccess}
+                    onCancel={() => setShowAddModal(false)}
+                />
+            )}
+        </>
     );
 }
