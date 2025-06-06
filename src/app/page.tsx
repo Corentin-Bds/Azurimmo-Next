@@ -12,6 +12,8 @@ export default function Home() {
                 <Link href={'/contrats'}>Contrats</Link>
                 <br/>
                 <Link href={'/appartements'}>Appartements</Link>
+                <br/>
+                <Link href={'/documents'}>Documents</Link>
             </li>
         </ul>
     </>

@@ -6,7 +6,8 @@ const API_URL={
     appartements: `${API_BASE}appartements/`,
     appartementsByBatiment: `${API_BASE}appartements/batiment/`,
     contrats: `${API_BASE}contrats/`,
-    locataires: `${API_BASE}locataires/`
+    locataires: `${API_BASE}locataires/`,
+    documents: `${API_BASE}documents/`
 
 
 };
